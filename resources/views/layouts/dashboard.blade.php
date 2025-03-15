@@ -8,6 +8,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ config('app.name') }}</title>
+  {{-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/google/fonts/ofl/sourcesanspro/SourceSansPro-Regular.ttf"> --}}
 
   <!-- Google Font: Source Sans Pro -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -207,7 +208,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
             <a href="#" class="nav-link active">
               <i class="nav-icon fas fa-tachometer-alt"></i>
               <p>
-                Starter Pages
+                @yield('title')
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -249,12 +250,13 @@ scratch. This page gets rid of all links and provides the needed markup only.
       <div class="container-fluid">
         <div class="row mb-2">
           <div class="col-sm-6">
-            <h1 class="m-0">Starter Page</h1>
-          </div><!-- /.col -->
+            <h1 class="m-0">@yield('title', 'Page Title')</h1>
+        </div><!-- /.col -->
           <div class="col-sm-6">
             <ol class="breadcrumb float-sm-right">
+              @section('breadcrumb')
               <li class="breadcrumb-item"><a href="#">Home</a></li>
-              <li class="breadcrumb-item active">Starter Page</li>
+              @show
             </ol>
           </div><!-- /.col -->
         </div><!-- /.row -->
