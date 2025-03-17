@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use DB;
+use Storage;
 use App\Models\Category;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -43,9 +44,9 @@ class CategoriesController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:categories,name',
-            // 'parent_id' => 'nullable|exists:categories,id',
+            'parent_id' => 'nullable|exists:categories,id',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|mimes:jpeg,png,jpg,gif|max:2048',
             'status' => 'required|in:active,inactive',
         ]);
 
@@ -116,7 +117,7 @@ class CategoriesController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255|unique:categories,name,'.$id,
-                // 'parent_id' => 'nullable|exists:categories,id',
+                'parent_id' => 'nullable|exists:categories,id',
                 'description' => 'nullable|string',
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
                 'status' => 'required|in:active,inactive',
@@ -128,7 +129,7 @@ class CategoriesController extends Controller
 
             if ($request->hasFile('image')) {
                 if ($category->image) {
-                    \Storage::disk('public')->delete($category->image);
+                    Storage::disk('public')->delete($category->image);
                 }
                 $validated['image'] = $request->file('image')->store('categories', 'public');
             }
@@ -164,8 +165,12 @@ class CategoriesController extends Controller
             if (Category::where('parent_id', $id)->exists()) {
                 return redirect()->route('categories.index')->with('error', 'Cannot delete category with subcategories!');
             }
-
             $category->delete();
+
+            if($category->image) {
+                Storage::disk('public')->delete($category->image);
+            }
+
 
             return redirect()->route('categories.index')->with('success', 'Category deleted successfully!');
 

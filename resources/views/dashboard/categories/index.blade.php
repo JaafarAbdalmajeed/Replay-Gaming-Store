@@ -30,6 +30,7 @@
             <tr>
                 <th>#</th>
                 <th>ID</th>
+                <th>Image</th>
                 <th>Name</th>
                 <th>Parent Category</th>
                 <th>Status</th>
@@ -40,9 +41,15 @@
         <tbody>
             @forelse ($categories as $category)
             <tr>
-                <td></td>
                 <td>{{ $category->id }}</td>
-                <td>{{ $category->name }}</td>
+                <td>
+                    @if ($category->image)
+                        <img src="{{ asset('storage/' . $category->image) }}" alt="Category Image" width="50">
+                    @else
+                        <span class="text-muted">No Image</span>
+                    @endif
+                </td>
+                                <td>{{ $category->name }}</td>
                 <td>{{ $category->parent ? $category->parent->name : 'No Parent' }}</td>
                 <td>
                     @if($category->status == 'active')
