@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Categories')
+@section('title', 'New Categories')
 
 @section('breadcrumb')
     @parent
@@ -9,8 +9,17 @@
 
 @section('content')
 
-<div class="container mt-1">
     <div class="card p-4">
+            @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
         <form action="{{ route('categories.store') }}" method="POST">
             @csrf
             <div class="mb-3">
@@ -21,7 +30,6 @@
                 <label for="parent_id" class="form-label">Parent Category</label>
                 <select class="form-control" id="parent_id" name="parent_id">
                     <option value="">Primary Category</option>
-                    <option value="">Not Found</option>
                     @foreach ($categories as $category)
                         <option value="{{ $category->id }}">{{ $category->name }}</option>
                     @endforeach
@@ -40,18 +48,16 @@
                 <div>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="status" id="active" value="active" checked>
-                        <label class="form-check-label" for="active">active</label>
+                        <label class="form-check-label" for="active">Active</label>
                     </div>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="status" id="inactive" value="inactive">
-                        <label class="form-check-label" for="inactive">inactive</label>
+                        <label class="form-check-label" for="inactive">Inactive</label>
                     </div>
                 </div>
             </div>
-
             <button type="submit" class="btn btn-success">Save</button>
         </form>
     </div>
-</div>
 
 @endsection
