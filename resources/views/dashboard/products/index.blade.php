@@ -1,15 +1,15 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Categories')
+@section('title', 'Products')
 
 @section('breadcrumb')
     @parent
-    <li class="breadcrumb-item active">Categories</li>
+    <li class="breadcrumb-item active">Products</li>
 @endsection
 
 @push('styles')
 <style>
-    .category-description {
+    .product-description {
         font-size: 14px;
         line-height: 1.6;
         color: #555;
@@ -22,12 +22,12 @@
 @section('content')
 
     <div class="mb-3">
-        <a href="{{ route('categories.create') }}" class="btn btn-primary mr-3">
+        <a href="{{ route('products.create') }}" class="btn btn-primary mr-3">
             <i class="fas fa-plus"></i> New Category
         </a>
-                <a href="{{ route('categories.trash') }}" class="btn btn-danger">
+                {{-- <a href="{{ route('products.trash') }}" class="btn btn-danger">
             <i class="fas fa-trash"></i> Trash
-        </a>
+        </a> --}}
     </div>
 
 <x-alert></x-alert>
@@ -76,57 +76,59 @@
                 <th>Image</th>
                 <th>Name</th>
                 <th>Description</th>
-                <th>Parent Category</th>
+                <th>Category</th>
+                <th>Store</th>
                 <th>Status</th>
                 <th>Created At</th>
-                <th>Actions</th>
+                <th colspan="2">Actions</th>
             </tr>
         </thead>
         <tbody>
-            @forelse ($categories as $category)
+            @forelse ($products as $product)
             <tr>
-                <td>{{ $category->id }}</td>
+                <td>{{ $product->id }}</td>
                 <td>
-                    @if($category->image)
-                    <img src="{{ asset('storage/' . $category->image) }}" alt="Category Image" width="100">
+                    @if($product->image)
+                    <img src="{{ asset('storage/' . $product->image) }}" alt="Category Image" width="100">
                     @else
                                                     <span class="text-muted">No Image</span>
                     @endif
                 </td>
-                <td>{{ $category->name }}</td>
+                <td>{{ $product->name }}</td>
 
                     <td>
-                        @if(strlen($category->description) > 50)
-                            <div id="description-{{ $category->id }}">
-                                <span id="short-description-{{ $category->id }}">
-                                    {{ \Str::limit($category->description, 100) }}
+                        @if(strlen($product->description) > 50)
+                            <div id="description-{{ $product->id }}">
+                                <span id="short-description-{{ $product->id }}">
+                                    {{ \Str::limit($product->description, 100) }}
                                 </span>
-                                <span id="full-description-{{ $category->id }}" style="display: none;">
-                                    {{ $category->description }}
+                                <span id="full-description-{{ $product->id }}" style="display: none;">
+                                    {{ $product->description }}
                                 </span>
-                                <button onclick="toggleDescription({{ $category->id }})" class="btn btn-link">
-                                    <span id="toggle-text-{{ $category->id }}">show more</span>
+                                <button onclick="toggleDescription({{ $product->id }})" class="btn btn-link">
+                                    <span id="toggle-text-{{ $product->id }}">show more</span>
                                 </button>
                             </div>
                         @else
-                            <span>{{ $category->description }}</span>
+                            <span>{{ $product->description }}</span>
                         @endif
                     </td>
 
-                <td>{{ $category->parent ? $category->parent_name : 'No Parent' }}</td>
+                <td>{{ $product->category_id }}</td>
+                <td>{{ $product->store_id }}</td>
                 <td>
-                    @if($category->status == 'active')
+                    @if($product->status == 'active')
                         <span class="badge bg-success">Active</span>
                     @else
                         <span class="badge bg-danger">Inactive</span>
                     @endif
                 </td>
-                <td>{{ $category->created_at->format('d-m-Y H:i') }}</td>
+                <td>{{ $product->created_at->format('d-m-Y H:i') }}</td>
                 <td colspan="2">
-                    <a href="{{ route('categories.edit', $category->id) }}" class="btn btn-warning btn-sm">
+                    <a href="{{ route('products.edit', $product->id) }}" class="btn btn-warning btn-sm">
                         <i class="bi bi-pencil"></i> Edit
                     </a>
-                    <form action="{{ route('categories.destroy', $category->id) }}" method="POST" class="d-inline">
+                    <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="d-inline">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger btn-sm">
@@ -137,23 +139,23 @@
             </tr>
             @empty
             <tr>
-                <td colspan="9" class="text-center">No Categories Found</td>
+                <td colspan="9" class="text-center">No Products Found</td>
             </tr>
             @endforelse
         </tbody>
     </table>
 
-    {{ $categories->withQueryString()->links() }}
+    {{ $products->withQueryString()->links() }}
 
 @endsection
 
 
 @push('scripts')
 <script>
-    function toggleDescription(categoryId) {
-        var shortDescription = document.getElementById('short-description-' + categoryId);
-        var fullDescription = document.getElementById('full-description-' + categoryId);
-        var toggleText = document.getElementById('toggle-text-' + categoryId);
+    function toggleDescription(productId) {
+        var shortDescription = document.getElementById('short-description-' + productId);
+        var fullDescription = document.getElementById('full-description-' + productId);
+        var toggleText = document.getElementById('toggle-text-' + productId);
 
         if (fullDescription.style.display === "none") {
             fullDescription.style.display = "inline";

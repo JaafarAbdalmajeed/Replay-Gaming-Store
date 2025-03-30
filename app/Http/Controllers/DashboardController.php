@@ -16,7 +16,7 @@ class DashboardController extends Controller
 
         $username = Auth::user()->name;
         $title = 'RGS';
-        return view('dashboards.index', [
+        return view('dashboard.index', [
             'name' => $username,
             'title' => $title
         ]);

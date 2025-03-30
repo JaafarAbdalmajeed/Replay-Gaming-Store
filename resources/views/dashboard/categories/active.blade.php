@@ -59,7 +59,7 @@
         >
             <option value="">All Statuses</option>
             <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
-            <option value="archive" {{ request('status') == 'archive' ? 'selected' : '' }}>Archived</option>
+            <option value="archive" {{ request('status') == 'archived' ? 'selected' : '' }}>Archived</option>
         </select>
     </div>
 
@@ -118,7 +118,7 @@
                     @if($category->status == 'active')
                         <span class="badge bg-success">Active</span>
                     @else
-                        <span class="badge bg-danger">Inactive</span>
+                        <span class="badge bg-danger">Archived</span>
                     @endif
                 </td>
                 <td>{{ $category->created_at->format('d-m-Y H:i') }}</td>

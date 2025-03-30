@@ -1,10 +1,10 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Categories')
+@section('title', 'Trash Categories')
 
 @section('breadcrumb')
     @parent
-    <li class="breadcrumb-item active">Categories</li>
+    <li class="breadcrumb-item active">Trash Categories</li>
 @endsection
 
 @push('styles')
@@ -22,12 +22,7 @@
 @section('content')
 
     <div class="mb-3">
-        <a href="{{ route('categories.create') }}" class="btn btn-primary mr-3">
-            <i class="fas fa-plus"></i> New Category
-        </a>
-                <a href="{{ route('categories.trash') }}" class="btn btn-danger">
-            <i class="fas fa-trash"></i> Trash
-        </a>
+        <a href="{{ route('categories.index') }}" class="btn btn-primary">Back</a>
     </div>
 
 <x-alert></x-alert>
@@ -64,9 +59,7 @@
     </div>
 
     <!-- Submit Button -->
-    <button type="submit" class="btn btn-primary btn-lg ml-2">
-        <i class="fas fa-search"></i> Search
-    </button>
+    <button type="submit" class="btn btn-primary btn-lg ml-2">Search</button>
 </form>
 
     <table class="table table-bordered table-striped mt-3">
@@ -76,9 +69,8 @@
                 <th>Image</th>
                 <th>Name</th>
                 <th>Description</th>
-                <th>Parent Category</th>
                 <th>Status</th>
-                <th>Created At</th>
+                <th>Deleted At</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -113,7 +105,6 @@
                         @endif
                     </td>
 
-                <td>{{ $category->parent ? $category->parent_name : 'No Parent' }}</td>
                 <td>
                     @if($category->status == 'active')
                         <span class="badge bg-success">Active</span>
@@ -121,23 +112,27 @@
                         <span class="badge bg-danger">Inactive</span>
                     @endif
                 </td>
-                <td>{{ $category->created_at->format('d-m-Y H:i') }}</td>
+                <td>{{ $category->deleted_at->format('d-m-Y H:i') }}</td>
                 <td colspan="2">
-                    <a href="{{ route('categories.edit', $category->id) }}" class="btn btn-warning btn-sm">
-                        <i class="bi bi-pencil"></i> Edit
-                    </a>
-                    <form action="{{ route('categories.destroy', $category->id) }}" method="POST" class="d-inline">
+                    <form action="{{ route('categories.restore', $category->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        @method('PUT')
+                        <button type="submit" class="btn btn-info btn-sm">
+                            <i class="bi bi-trash"></i> Restore
+                        </button>
+                    </form>
+                    <form action="{{ route('categories.force-delete', $category->id) }}" method="POST" class="d-inline">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger btn-sm">
-                            <i class="bi bi-trash"></i> Delete
+                            <i class="bi bi-trash"></i> Force Delete
                         </button>
                     </form>
                 </td>
             </tr>
             @empty
             <tr>
-                <td colspan="9" class="text-center">No Categories Found</td>
+                <td colspan="8" class="text-center">No Categories Found</td>
             </tr>
             @endforelse
         </tbody>

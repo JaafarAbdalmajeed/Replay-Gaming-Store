@@ -1,6 +1,21 @@
+<div class="card p-4">
+    @if ($errors->any())
+<div class="alert alert-danger">
+    <ul>
+        @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
 <div class="mb-3">
     <label for="name" class="form-label">Category Name</label>
-    <input type="text" class="form-control" id="name" name="name" value="{{ old('name', $category->name ?? '') }}" required>
+    <input type="text" class="form-control @error('name') is-invalid  @enderror" id="name" name="name" value="{{ old('name', $category->name ?? '') }}" >
+    @error('name')
+        <div class="invalid-feedback">
+            {{ $message }}
+        </div>
+    @enderror
 </div>
 
 <div class="mb-3">
@@ -19,12 +34,35 @@
 </div>
 
 <div class="mb-3">
-    <label for="image" class="form-label">Image</label>
-    <input type="file" class="form-control" id="image" name="image" accept="image/*">
+    <label for="image" class="form-label fw-bold">Upload Image</label>
+
+    <div class="input-group">
+        <input type="file" class="form-control d-none" id="image" name="image" accept="image/*" onchange="previewImage(event)">
+        <label class="btn btn-primary" for="image">Choose Image</label>
+    </div>
+
     @if(isset($category) && $category->image)
-        <img src="{{ asset('storage/' . $category->image) }}" alt="Category Image" class="img-thumbnail mt-2" width="100">
+        <div class="mt-2">
+            <img id="preview" src="{{ asset('storage/' . $category->image) }}" alt="Image Category" class="img-thumbnail" width="120">
+        </div>
+    @else
+        <div class="mt-2">
+            <img id="preview" src="" alt="" class="img-thumbnail d-none" width="120">
+        </div>
     @endif
 </div>
+
+<script>
+    function previewImage(event) {
+        var reader = new FileReader();
+        reader.onload = function() {
+            var output = document.getElementById('preview');
+            output.src = reader.result;
+            output.classList.remove('d-none');
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
+</script>
 
 <div class="mb-3">
     <label class="form-label">Status</label>

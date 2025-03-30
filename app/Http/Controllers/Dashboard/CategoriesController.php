@@ -8,6 +8,7 @@ use App\Models\Category;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CategoryRequest;
 
 class CategoriesController extends Controller
 {
@@ -18,12 +19,19 @@ class CategoriesController extends Controller
      */
     public function index()
     {
+        $filters = request()->query();
 
-        $categories = Category::with('parent')->get();
+        $categories = Category::filter($filters)
+            ->leftJoin('categories as parents', 'parents.id', '=', 'categories.parent_id')
+            ->select([
+                'categories.*',
+                'parents.name as parent_name'
+            ])
+            ->paginate(3);
+
         return view('dashboard.categories.index', compact('categories'));
     }
-
-    /**
+                /**
      * Show the form for creating a new resource.
      *
      * @return \Illuminate\Http\Response
@@ -40,25 +48,17 @@ class CategoriesController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(CategoryRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name',
-            'parent_id' => 'nullable|exists:categories,id',
-            'description' => 'nullable|string',
-            'image' => 'nullable|mimes:jpeg,png,jpg,gif|max:2048',
-            'status' => 'required|in:active,inactive',
-        ]);
-
         try {
             DB::beginTransaction();
 
-            $data = $request->all();
+            $data = $request->except('image');
             if ($request->hasFile('image')) {
                 $data['image'] = $request->file('image')->store('categories', 'public');
             }
 
-            $data['slug'] = $this->generateUniqueSlug($request->name);
+                $data['slug'] = $this->generateUniqueSlug($request->name);
 
             Category::create($data);
 
@@ -94,9 +94,7 @@ class CategoriesController extends Controller
         try {
             $category = Category::findOrFail($id);
 
-            $categories = Category::where('id', '<>', $id)
-                ->where('parent_id' , '<>', $id)
-                ->get();
+            $categories = Category::where('id', '<>', $id)->get();
 
             return view('dashboard.categories.edit', compact('category', 'categories'));
 
@@ -112,14 +110,14 @@ class CategoriesController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(CategoryRequest $request, $id)
     {
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255|unique:categories,name,'.$id,
                 'parent_id' => 'nullable|exists:categories,id',
                 'description' => 'nullable|string',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'image' => 'nullable|image|max:2048',
                 'status' => 'required|in:active,inactive',
             ]);
 
@@ -167,9 +165,6 @@ class CategoriesController extends Controller
             }
             $category->delete();
 
-            if($category->image) {
-                Storage::disk('public')->delete($category->image);
-            }
 
 
             return redirect()->route('categories.index')->with('success', 'Category deleted successfully!');
@@ -181,11 +176,68 @@ class CategoriesController extends Controller
 
 
     private function generateUniqueSlug($name, $id = null)
-{
-    $slug = Str::slug($name);
-    $count = Category::where('slug', 'LIKE', "{$slug}%")->where('id', '!=', $id)->count();
+    {
+        $slug = Str::slug($name);
+        $count = Category::where('slug', 'LIKE', "{$slug}%")->where('id', '!=', $id)->count();
 
-    return $count ? "{$slug}-" . ($count + 1) : $slug;
-}
+        return $count ? "{$slug}-" . ($count + 1) : $slug;
+    }
+
+    public function trash()
+    {
+        $categories = Category::onlyTrashed()->paginate(10);
+        return view('dashboard.categories.trash', compact('categories'));
+    }
+
+    public function restore($id)
+    {
+        Category::withTrashed()->where('id', $id)->restore();
+        return redirect()->route('categories.trash')->with('success', 'Category restored successfully.');
+    }
+
+    public function forceDelete($id)
+    {
+        $category = Category::withTrashed()->where('id', $id)->firstOrFail()->forceDelete();
+            if($category->image) {
+                Storage::disk('public')->delete($category->image);
+            }
+
+        return redirect()->route('categories.trash')->with('success', 'Category deleted permanently.');
+    }
+
+    public function active()
+    {
+        $filters = request()->query();
+        $filters['status'] = 'active';
+
+        $categories = Category::filter($filters)
+            ->leftJoin('categories as parents', 'parents.id', '=', 'categories.parent_id')
+            ->select([
+                'categories.*',
+                'parents.name as parent_name'
+            ])
+            ->paginate(3);
+
+        return view('dashboard.categories.active', compact('categories'));
+    }
+
+    public function archived()
+    {
+        $filters = request()->query();
+        $filters['status'] = 'inactive';
+
+        $categories = Category::filter($filters)
+            ->leftJoin('categories as parents', 'parents.id', '=', 'categories.parent_id')
+            ->select([
+                'categories.*',
+                'parents.name as parent_name'
+            ])
+            ->paginate(3);
+
+
+        return view('dashboard.categories.archived', compact('categories'));
+    }
+
+
 
 }

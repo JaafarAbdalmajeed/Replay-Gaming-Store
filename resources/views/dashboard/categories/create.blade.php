@@ -9,19 +9,9 @@
 
 @section('content')
 
-    <div class="card p-4">
-            @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
 
-        <form action="{{ route('categories.store') }}" method="POST">
-            @csrf
+<form action="{{ route('categories.store') }}" method="POST" enctype="multipart/form-data">
+ @csrf
             @include('dashboard.categories._form')
         </form>
     </div>
