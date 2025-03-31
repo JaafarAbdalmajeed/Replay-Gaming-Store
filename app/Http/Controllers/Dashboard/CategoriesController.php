@@ -21,17 +21,20 @@ class CategoriesController extends Controller
     {
         $filters = request()->query();
 
-        $categories = Category::filter($filters)
-            ->leftJoin('categories as parents', 'parents.id', '=', 'categories.parent_id')
-            ->select([
-                'categories.*',
-                'parents.name as parent_name'
+        $categories = Category::with('parent')
+            ->withCount([
+                'products' => function ($query) {
+                    $query->where('status' , '=', 'active');
+                }
             ])
+            // ->select('categories.*')
+            // ->selectRaw('(SELECT COUNT(*) FROM products WHERE products.category_id = categories.id) as products_count')
+            ->filter($filters)
             ->paginate(3);
 
         return view('dashboard.categories.index', compact('categories'));
     }
-                /**
+                    /**
      * Show the form for creating a new resource.
      *
      * @return \Illuminate\Http\Response
@@ -78,9 +81,12 @@ class CategoriesController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Category $category)
     {
-        //
+
+        return view('dashboard.categories.show', [
+            'category' => $category
+        ]);
     }
 
     /**
@@ -210,12 +216,16 @@ class CategoriesController extends Controller
         $filters = request()->query();
         $filters['status'] = 'active';
 
-        $categories = Category::filter($filters)
-            ->leftJoin('categories as parents', 'parents.id', '=', 'categories.parent_id')
-            ->select([
-                'categories.*',
-                'parents.name as parent_name'
-            ])
+        $categories = Category::with('parent')
+            ->select('categories.*')
+            ->selectRaw('(SELECT COUNT(*) FROM Products WHERE category_id =  categories.id) as products_count')
+            ->addSelect(DB::raw('(SELECT COUNT(*) FROM products WHERE products.category_id = categories.id) AS products_count'))
+            ->filter($filters)
+            // ->leftJoin('categories as parents', 'parents.id', '=', 'categories.parent_id')
+            // ->select([
+            //     'categories.*',
+            //     'parents.name as parent_name'
+            // ])
             ->paginate(3);
 
         return view('dashboard.categories.active', compact('categories'));

@@ -76,6 +76,7 @@
                 <th>Image</th>
                 <th>Name</th>
                 <th>Description</th>
+                <th>Products #</th>
                 <th>Parent Category</th>
                 <th>Status</th>
                 <th>Created At</th>
@@ -93,7 +94,7 @@
                                                     <span class="text-muted">No Image</span>
                     @endif
                 </td>
-                <td>{{ $category->name }}</td>
+                <td><a href="{{route('categories.show', $category->id)}}">{{ $category->name }}</a></td>
 
                     <td>
                         @if(strlen($category->description) > 50)
@@ -113,7 +114,9 @@
                         @endif
                     </td>
 
-                <td>{{ $category->parent ? $category->parent_name : 'No Parent' }}</td>
+                    <td>{{ $category->products_count }}</td>
+
+                <td>{{ $category->parent ? $category->parent->name : 'No Parent' }}</td>
                 <td>
                     @if($category->status == 'active')
                         <span class="badge bg-success">Active</span>
