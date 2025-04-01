@@ -1,17 +1,22 @@
-<div class="mb-3">
-    <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-    <input
-        type="{{ $type }}"
-        class="form-control @error($name) is-invalid @enderror"
-        id="{{ $id }}"
-        name="{{ $name }}"
-        value="{{ old($name, $value) }}"
-        placeholder="{{ $placeholder ?? 'Enter ' . $label }}"
-        aria-label="{{ $label }}"
-    >
-    @error($name)
-        <div class="invalid-feedback">
-            {{ $message }}
-        </div>
-    @enderror
-</div>
+@props([
+    'type' => 'text',
+    'name',
+    'value' => '',
+    'label' => false
+])
+
+@if($label)
+    <label for="{{ $name }}">{{ $label }}</label>
+@endif
+
+<input
+    type="{{ $type }}"
+    name="{{ $name }}"
+    value="{{ old($name, $value) }}"
+    {{ $attributes->class([
+        'form-control',
+        'is-invalid' => $errors->has($name)
+    ]) }}
+>
+
+<x-form.validation-feedback :name="$name" />

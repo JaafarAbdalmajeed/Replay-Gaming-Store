@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Models\Tag;
 use App\Models\Product;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -59,19 +61,32 @@ class ProductsController extends Controller
      */
     public function edit($id)
     {
-        //
+        $product = Product::findOrFail($id);
+        $tags = implode( ',', $product->tags()->pluck('name')->toArray());
+        return view('dashboard.products.edit', compact('product', 'tags'));
     }
-
-    /**
+        /**
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Product $product)
     {
-        //
+        $product->update($request->except('tags'));
+        $tags = explode(',', $request->post('tags'));
+        $existingTags = Tag::whereIn('slug', array_map(fn($tag) => Str::slug($tag), $tags))->pluck('id', 'slug')->toArray();
+        $tagIds = [];
+        foreach ($tags as $t_name) {
+            $slug = Str::slug($t_name);
+            $tagIds[] = $existingTags[$slug] ?? Tag::create([
+                'name' => $t_name,
+                'slug' => $slug,
+            ])->id;
+        }
+        $product->tags()->sync($tagIds);
+        return redirect()->route('products.index')->with('success', 'Product updated successfully');
     }
 
     /**
