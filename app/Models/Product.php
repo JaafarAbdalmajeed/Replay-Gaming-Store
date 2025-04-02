@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Tag;
 use App\Models\Store;
 use App\Models\Category;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
@@ -63,4 +64,32 @@ class Product extends Model
             'id' // المفتاح الأساسي للنموذج الآخر
         );
     }
+
+
+    public function scopeActive(Builder $builder,)
+    {
+
+            $builder->where('status', '=', 'active');
+
+    }
+
+    public function getImageUrlAttribute()
+    {
+        if (!$this->image) {
+            return 'https://www.incathlab.com/images/products/default_product.png';
+        }
+        if (Str::startsWith($this->image, ['http://', 'https://'])) {
+            return $this->image;
+        }
+        return asset('storage/' . $this->image);
+    }
+
+    public function getSalePercentAttribute()
+    {
+        if (!$this->compare_price) {
+            return 0;
+        }
+        return round(100 - (100 * $this->price / $this->compare_price), 1);
+    }
+
 }
