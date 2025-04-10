@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Dashboard;
 
-use DB;
-use Storage;
-use App\Models\Category;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CategoryRequest;
+use App\Models\Category;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CategoriesController extends Controller
 {
@@ -19,30 +22,51 @@ class CategoriesController extends Controller
      */
     public function index()
     {
-        $filters = request()->query();
+        if (!Gate::allows('categories.view')) {
+            abort(403);
+        }
+
+        $request = request();
+
+        // SELECT a.*, b.name as parent_name
+        // FROM categories as a
+        // LEFT JOIN categories as b ON b.id = a.parent_id
 
         $categories = Category::with('parent')
+            /*leftJoin('categories as parents', 'parents.id', '=', 'categories.parent_id')
+            ->select([
+                'categories.*',
+                'parents.name as parent_name'
+            ])*/
+            //->select('categories.*')
+            //->selectRaw('(SELECT COUNT(*) FROM products WHERE AND status = 'active' AND category_id = categories.id) as products_count')
+            //->addSelect(DB::raw('(SELECT COUNT(*) FROM products WHERE category_id = categories.id) as products_count'))
             ->withCount([
-                'products' => function ($query) {
-                    $query->where('status' , '=', 'active');
+                'products as products_number' => function($query) {
+                    $query->where('status', '=', 'active');
                 }
             ])
-            // ->select('categories.*')
-            // ->selectRaw('(SELECT COUNT(*) FROM products WHERE products.category_id = categories.id) as products_count')
-            ->filter($filters)
-            ->paginate(3);
+            ->filter($request->query())
+            ->orderBy('categories.name')
+            ->paginate(); // Return Collection object
 
         return view('dashboard.categories.index', compact('categories'));
     }
-                    /**
+
+    /**
      * Show the form for creating a new resource.
      *
      * @return \Illuminate\Http\Response
      */
     public function create()
     {
-        $categories = Category::all();
-        return view('dashboard.categories.create',compact('categories'));
+        if (Gate::denies('categories.create')) {
+            abort(403);
+        }
+
+        $parents = Category::all();
+        $category = new Category();
+        return view('dashboard.categories.create', compact('category', 'parents'));
     }
 
     /**
@@ -51,28 +75,30 @@ class CategoriesController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(CategoryRequest $request)
+    public function store(Request $request)
     {
-        try {
-            DB::beginTransaction();
+        Gate::authorize('categories.create');
 
-            $data = $request->except('image');
-            if ($request->hasFile('image')) {
-                $data['image'] = $request->file('image')->store('categories', 'public');
-            }
+        $clean_data = $request->validate(Category::rules(), [
+            'required' => 'This field (:attribute) is required',
+            'name.unique' => 'This name is already exists!'
+        ]);
 
-                $data['slug'] = $this->generateUniqueSlug($request->name);
+        // Request merge
+        $request->merge([
+            'slug' => Str::slug($request->post('name'))
+        ]);
 
-            Category::create($data);
+        $data = $request->except('image');
+        $data['image'] = $this->uploadImgae($request);
 
-            \DB::commit();
-            return redirect()->route('categories.index')->with('success', 'Successfully Created Category');
 
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            \Log::error($e->getMessage());
-            return redirect()->route('categories.index')->with('error', 'Category creation failed: ' . $e->getMessage());
-        }
+        // Mass assignment
+        $category = Category::create( $data );
+
+        // PRG
+        return Redirect::route('dashboard.categories.index')
+            ->with('success', 'Category created!');
     }
 
     /**
@@ -83,7 +109,9 @@ class CategoriesController extends Controller
      */
     public function show(Category $category)
     {
-
+        if (Gate::denies('categories.view')) {
+            abort(403);
+        }
         return view('dashboard.categories.show', [
             'category' => $category
         ]);
@@ -97,16 +125,25 @@ class CategoriesController extends Controller
      */
     public function edit($id)
     {
+        Gate::authorize('categories.update');
+
         try {
             $category = Category::findOrFail($id);
-
-            $categories = Category::where('id', '<>', $id)->get();
-
-            return view('dashboard.categories.edit', compact('category', 'categories'));
-
-        } catch (\Exception $e) {
-            return redirect()->route('categories.index')->with('error', 'Category not found!');
+        } catch (Exception $e) {
+            return redirect()->route('dashboard.categories.index')
+                ->with('info', 'Record not found!');
         }
+
+        // SELECT * FROM categories WHERE id <> $id
+        // AND (parent_id IS NULL OR parent_id <> $id)
+        $parents = Category::where('id', '<>', $id)
+            ->where(function($query) use ($id) {
+                $query->whereNull('parent_id')
+                      ->orWhere('parent_id', '<>', $id);
+            })
+            ->get();
+
+        return view('dashboard.categories.edit', compact('category', 'parents'));
     }
 
     /**
@@ -118,41 +155,27 @@ class CategoriesController extends Controller
      */
     public function update(CategoryRequest $request, $id)
     {
-        try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:categories,name,'.$id,
-                'parent_id' => 'nullable|exists:categories,id',
-                'description' => 'nullable|string',
-                'image' => 'nullable|image|max:2048',
-                'status' => 'required|in:active,inactive',
-            ]);
+        //$request->validate(Category::rules($id));
 
-            $category = Category::findOrFail($id);
+        $category = Category::findOrFail($id);
 
-            \DB::beginTransaction();
+        $old_image = $category->image;
 
-            if ($request->hasFile('image')) {
-                if ($category->image) {
-                    Storage::disk('public')->delete($category->image);
-                }
-                $validated['image'] = $request->file('image')->store('categories', 'public');
-            }
-
-            $validated['slug'] = $this->generateUniqueSlug($request->name, $id);
-
-            $category->update($validated);
-
-            \DB::commit();
-            return redirect()->route('categories.index')->with('success', 'Category updated successfully!');
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return redirect()->back()->withErrors($e->errors())->withInput();
-
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            \Log::error($e->getMessage());
-            return redirect()->route('categories.index')->with('error', 'Category update failed!');
+        $data = $request->except('image');
+        $new_image = $this->uploadImgae($request);
+        if ($new_image) {
+            $data['image'] = $new_image;
         }
+
+        $category->update( $data );
+        //$category->fill($request->all())->save();
+
+        if ($old_image && $new_image) {
+            Storage::disk('public')->delete($old_image);
+        }
+
+        return Redirect::route('dashboard.categories.index')
+            ->with('success', 'Category updated!');
     }
 
     /**
@@ -161,93 +184,60 @@ class CategoriesController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(Category $category)
     {
-        try {
-            $category = Category::findOrFail($id);
+        Gate::authorize('categories.delete');
 
-            if (Category::where('parent_id', $id)->exists()) {
-                return redirect()->route('categories.index')->with('error', 'Cannot delete category with subcategories!');
-            }
-            $category->delete();
+        //$category = Category::findOrFail($id);
+        $category->delete();
+
+        //Category::where('id', '=', $id)->delete();
+        //Category::destroy($id);
 
 
-
-            return redirect()->route('categories.index')->with('success', 'Category deleted successfully!');
-
-        } catch (\Exception $e) {
-            return redirect()->route('categories.index')->with('error', 'Category could not be deleted!');
-        }
+        return Redirect::route('dashboard.categories.index')
+            ->with('success', 'Category deleted!');
     }
 
-
-    private function generateUniqueSlug($name, $id = null)
+    protected function uploadImgae(Request $request)
     {
-        $slug = Str::slug($name);
-        $count = Category::where('slug', 'LIKE', "{$slug}%")->where('id', '!=', $id)->count();
+        if (!$request->hasFile('image')) {
+            return;
+        }
 
-        return $count ? "{$slug}-" . ($count + 1) : $slug;
+        $file = $request->file('image'); // UploadedFile Object
+
+        $path = $file->store('uploads', [
+            'disk' => 'public'
+        ]);
+        return $path;
     }
 
     public function trash()
     {
-        $categories = Category::onlyTrashed()->paginate(10);
+        $categories = Category::onlyTrashed()->paginate();
         return view('dashboard.categories.trash', compact('categories'));
     }
 
-    public function restore($id)
+    public function restore(Request $request, $id)
     {
-        Category::withTrashed()->where('id', $id)->restore();
-        return redirect()->route('categories.trash')->with('success', 'Category restored successfully.');
+        $category = Category::onlyTrashed()->findOrFail($id);
+        $category->restore();
+
+        return redirect()->route('dashboard.categories.trash')
+            ->with('succes', 'Category restored!');
     }
 
     public function forceDelete($id)
     {
-        $category = Category::withTrashed()->where('id', $id)->firstOrFail()->forceDelete();
-            if($category->image) {
-                Storage::disk('public')->delete($category->image);
-            }
+        $category = Category::onlyTrashed()->findOrFail($id);
+        $category->forceDelete();
 
-        return redirect()->route('categories.trash')->with('success', 'Category deleted permanently.');
+        if ($category->image) {
+            Storage::disk('public')->delete($category->image);
+        }
+
+        return redirect()->route('dashboard.categories.trash')
+            ->with('succes', 'Category deleted forever!');
     }
-
-    public function active()
-    {
-        $filters = request()->query();
-        $filters['status'] = 'active';
-
-        $categories = Category::with('parent')
-            ->select('categories.*')
-            ->selectRaw('(SELECT COUNT(*) FROM Products WHERE category_id =  categories.id) as products_count')
-            ->addSelect(DB::raw('(SELECT COUNT(*) FROM products WHERE products.category_id = categories.id) AS products_count'))
-            ->filter($filters)
-            // ->leftJoin('categories as parents', 'parents.id', '=', 'categories.parent_id')
-            // ->select([
-            //     'categories.*',
-            //     'parents.name as parent_name'
-            // ])
-            ->paginate(3);
-
-        return view('dashboard.categories.active', compact('categories'));
-    }
-
-    public function archived()
-    {
-        $filters = request()->query();
-        $filters['status'] = 'inactive';
-
-        $categories = Category::filter($filters)
-            ->leftJoin('categories as parents', 'parents.id', '=', 'categories.parent_id')
-            ->select([
-                'categories.*',
-                'parents.name as parent_name'
-            ])
-            ->paginate(3);
-
-
-        return view('dashboard.categories.archived', compact('categories'));
-    }
-
-
-
 }

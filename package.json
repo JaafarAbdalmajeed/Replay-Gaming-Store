@@ -1,11 +1,11 @@
 {
     "private": true,
-"scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "watch": "vite build --watch",
-    "prod": "npm run build"
-},
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "watch": "vite build --watch",
+        "prod": "npm run build"
+    },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.2",
         "alpinejs": "^3.4.2",
@@ -18,7 +18,7 @@
         "vite": "^6.2.4"
     },
     "dependencies": {
-        "laravel-echo": "^1.13.1",
-        "pusher-js": "^7.3.0"
+        "laravel-echo": "^1.19.0",
+        "pusher-js": "^7.6.0"
     }
 }

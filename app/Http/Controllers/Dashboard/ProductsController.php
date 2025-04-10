@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Dashboard;
 
-use App\Models\Tag;
-use App\Models\Product;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Jobs\ImportProducts;
+use App\Models\Category;
+use App\Models\Product;
+use App\Models\Tag;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class ProductsController extends Controller
 {
@@ -18,9 +20,16 @@ class ProductsController extends Controller
      */
     public function index()
     {
-            $products = Product::with(['category', 'store'])->paginate();
+        $this->authorize('view-any', Product::class);
+
+        $products = Product::with(['category', 'store'])->paginate();
+        // SELECT * FROM products
+        // SELECT * FROM categories WHERE id IN (..)
+        // SELECT * FROM stores WHERE id IN (..)
+
         return view('dashboard.products.index', compact('products'));
     }
+
     /**
      * Show the form for creating a new resource.
      *
@@ -28,7 +37,7 @@ class ProductsController extends Controller
      */
     public function create()
     {
-        //
+        $this->authorize('create', Product::class);
     }
 
     /**
@@ -39,7 +48,7 @@ class ProductsController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $this->authorize('create', Product::class);
     }
 
     /**
@@ -50,7 +59,8 @@ class ProductsController extends Controller
      */
     public function show($id)
     {
-        //
+        $product = Product::findOrFail($id);
+        $this->authorize('view', $product);
     }
 
     /**
@@ -62,10 +72,14 @@ class ProductsController extends Controller
     public function edit($id)
     {
         $product = Product::findOrFail($id);
-        $tags = implode( ',', $product->tags()->pluck('name')->toArray());
+        $this->authorize('update', $product);
+
+        $tags = implode(',', $product->tags()->pluck('name')->toArray());
+
         return view('dashboard.products.edit', compact('product', 'tags'));
     }
-        /**
+
+    /**
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -74,19 +88,32 @@ class ProductsController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        $product->update($request->except('tags'));
-        $tags = explode(',', $request->post('tags'));
-        $existingTags = Tag::whereIn('slug', array_map(fn($tag) => Str::slug($tag), $tags))->pluck('id', 'slug')->toArray();
-        $tagIds = [];
-        foreach ($tags as $t_name) {
-            $slug = Str::slug($t_name);
-            $tagIds[] = $existingTags[$slug] ?? Tag::create([
-                'name' => $t_name,
-                'slug' => $slug,
-            ])->id;
+        $this->authorize('update', $product);
+
+        $product->update( $request->except('tags') );
+
+
+        $tags = json_decode($request->post('tags'));
+        $tag_ids = [];
+
+        $saved_tags = Tag::all();
+
+        foreach ($tags as $item) {
+            $slug = Str::slug($item->value);
+            $tag = $saved_tags->where('slug', $slug)->first();
+            if (!$tag) {
+                $tag = Tag::create([
+                    'name' => $item->value,
+                    'slug' => $slug,
+                ]);
+            }
+            $tag_ids[] = $tag->id;
         }
-        $product->tags()->sync($tagIds);
-        return redirect()->route('products.index')->with('success', 'Product updated successfully');
+
+        $product->tags()->sync($tag_ids);
+
+        return redirect()->route('dashboard.products.index')
+            ->with('success', 'Product updated');
     }
 
     /**
@@ -97,6 +124,8 @@ class ProductsController extends Controller
      */
     public function destroy($id)
     {
-        //
+        $product = Product::findOrFail($id);
+        $this->authorize('delete', $product);
     }
+
 }

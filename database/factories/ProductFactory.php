@@ -2,11 +2,10 @@
 
 namespace Database\Factories;
 
-use App\Models\Store;
-use App\Models\Product;
 use App\Models\Category;
-use Illuminate\Support\Str;
+use App\Models\Store;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Product>
@@ -20,25 +19,18 @@ class ProductFactory extends Factory
      */
     public function definition()
     {
-        $name = $this->faker->words(2, true);
-        $slug = Str::slug($name);
-
-        while (Product::where('slug', $slug)->exists()) {
-            $slug = Str::slug($name) . '-' . Str::random(5);
-        }
-
+        $name = $this->faker->words(3, true); // ← fixed here
 
         return [
             'name' => $name,
             'slug' => Str::slug($name),
-            'description' => $this->faker->sentence(13),
+            'description' => $this->faker->sentence(15),
             'image' => $this->faker->imageUrl(600, 600),
-            'price' => $this->faker->randomFloat(1,1,999),
-            'compare_price' => $this->faker->randomFloat(1,500,999),
+            'price' => $this->faker->randomFloat(1, 1, 499),
+            'compare_price' => $this->faker->randomFloat(1, 500, 999),
+            'category_id' => Category::inRandomOrder()->first()?->id ?? 1, // optional fallback
             'featured' => rand(0, 1),
-            'category_id' => Category::inRandomOrder()->first()->id,
-            'store_id' => Store::inRandomOrder()->first()->id,
+            'store_id' => Store::inRandomOrder()->first()?->id ?? 1, // optional fallback
         ];
-
     }
 }

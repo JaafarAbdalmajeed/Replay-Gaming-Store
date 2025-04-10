@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Category;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Gate;
 
 class CategoryRequest extends FormRequest
 {
@@ -13,7 +15,10 @@ class CategoryRequest extends FormRequest
      */
     public function authorize()
     {
-        return true;
+        if ($this->route('category')) {
+            return Gate::allows('categories.update');
+        }
+        return Gate::allows('categories.create');
     }
 
     /**
@@ -23,14 +28,15 @@ class CategoryRequest extends FormRequest
      */
     public function rules()
     {
-        $categoryId = $this->route('category');
+        $id = $this->route('category');
 
+        return Category::rules($id);
+    }
+
+    public function messages()
+    {
         return [
-            'name' => 'required|string|max:255|unique:categories,name,' . $categoryId,
-            'parent_id' => 'nullable|exists:categories,id',
-            'description' => 'nullable|string',
-            'status' => 'required|in:active,inactive',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'name.unique' => 'This name is already exists!',
         ];
-        }
+    }
 }
